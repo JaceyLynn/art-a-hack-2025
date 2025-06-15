@@ -11,15 +11,15 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// 1) Ensure images/ exists
+// ensure this exists:
 const IMAGES_DIR = path.join(process.cwd(), 'images');
 await fs.mkdir(IMAGES_DIR, { recursive: true });
+
 
 // 2) Serve front-end & saved images
 app.use(express.static('public'));
 app.use('/images', express.static(IMAGES_DIR));
 
-//🌟⚠️PUT YOUR OWN API KEY
 const API_KEY = '';
 
 // 3) A simple root route
@@ -31,7 +31,8 @@ app.get('/', (req, res) => {
 app.post('/generate-story', async (req, res) => {
   const words = req.body.words || [];
   try {
-    const storyPrompt = `Write a short, poetic dream-like story based on these words: ${words.join(', ')}. Keep it under 80 words.`;
+    const storyPrompt = `Write a dream-like first person story based on these components: ${words.join(', ')}. Keep it under 100 words.`;
+
     const aiResp = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -53,42 +54,96 @@ app.post('/generate-story', async (req, res) => {
   }
 });
 
-// 🖼️ Generate image, save to disk, return its URL
-app.post('/generate-image', async (req, res) => {
-  const prompt = req.body.prompt;
+// 🌄 Generate a DALL·E-style prompt from the story
+app.post('/generate-image-prompt', async (req, res) => {
+  const { story } = req.body;
+  if (!story) {
+    return res.status(400).json({ error: 'Missing story in request body' });
+  }
+
   try {
-    // Request DALL·E
-    const genResp = await fetch('https://api.openai.com/v1/images/generations', {
+    // Ask GPT to turn the story into a concise, vivid image prompt
+    const promptResp = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${API_KEY}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ prompt, n: 1, size: '512x512' })
+      body: JSON.stringify({
+        model: 'gpt-3.5-turbo',
+        messages: [
+          { role: 'system',
+            content: `You are an assistant that turns short stories into vivid DALL·E prompts.  
+                      Always write them in a surrealist style—dream-like, with odd juxtapositions,  
+                      evoking artists like Dalí or Magritte.`.replace(/\s+/g,' ')
+          },
+          { role: 'user', content: story }
+        ],
+        temperature: 0.8,
+        max_tokens: 60
+      })
     });
-    const genData = await genResp.json();
-    const imageUrl = genData.data?.[0]?.url;
-    if (!imageUrl) {
-      return res.status(500).json({ error: 'Image URL not returned' });
+    const promptData = await promptResp.json();
+
+    // Forward any OpenAI error
+    if (promptData.error) {
+      console.error('OpenAI image-prompt error:', promptData.error);
+      return res.status(502).json({ error: promptData.error.message });
     }
 
-    // Download the image bytes
-    const imgResp = await fetch(imageUrl);
-    const buffer = await imgResp.buffer();
+    const imagePrompt = promptData.choices?.[0]?.message?.content?.trim();
+    if (!imagePrompt) {
+      return res.status(500).json({ error: 'Failed to generate image prompt' });
+    }
 
-    // Save to images/
-    const filename = `ai-image-${Date.now()}.png`;
-    const filepath = path.join(IMAGES_DIR, filename);
-    await fs.writeFile(filepath, buffer);
-
-    // Return the public URL
-    const publicUrl = `${req.protocol}://${req.get('host')}/images/${filename}`;
-    res.json({ url: publicUrl });
+    res.json({ imagePrompt });
   } catch (err) {
-    console.error('Error generating image:', err);
+    console.error('❌ /generate-image-prompt error:', err);
     res.status(500).json({ error: err.message });
   }
 });
+
+// POST /generate-images → generate n images, save each to disk, return their public URLs
+app.post('/generate-images', async (req, res) => {
+    const { prompt, n = 3 } = req.body;
+  
+    try {
+      // 1) Ask OpenAI for n images
+      const aiResp = await fetch('https://api.openai.com/v1/images/generations', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${API_KEY}`,
+          'Content-Type':  'application/json',
+        },
+        body: JSON.stringify({ prompt, n, size: '512x512' })
+      });
+      const aiData = await aiResp.json();
+      if (!aiData.data || !Array.isArray(aiData.data)) {
+        return res.status(500).json({ error: 'No images returned from OpenAI' });
+      }
+  
+      // 2) Download & save each image
+      const publicUrls = await Promise.all(aiData.data.map(async (item) => {
+        const imageUrl = item.url;
+        const imgResp = await fetch(imageUrl);
+        const buffer = await imgResp.buffer();
+  
+        const filename = `ai-image-${Date.now()}-${Math.random().toString(36).slice(2)}.png`;
+        const filepath = path.join(IMAGES_DIR, filename);
+        await fs.writeFile(filepath, buffer);
+  
+        return `${req.protocol}://${req.get('host')}/images/${filename}`;
+      }));
+  
+      // 3) Send back the array of URLs
+      res.json({ imageUrls: publicUrls });
+  
+    } catch (err) {
+      console.error('❌ /generate-images error', err);
+      res.status(500).json({ error: err.message });
+    }
+  });
+  
 
 app.listen(3000, () => {
   console.log('✅ Server running at http://localhost:3000');
