@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <title>Dream Visualizer</title>
+  <style>
+    body { font-family: sans-serif; background: #fdf6f0; padding: 40px; text-align: center; }
+    input { padding: 10px; margin: 8px; width: 200px; border-radius: 10px; border: 1px solid #ccc; }
+    button { padding: 10px 20px; font-weight: bold; border-radius: 10px; background: #a5d8ff; border: none; cursor: pointer; }
+    #prompt, #image-story { margin-top: 20px; color: #555; font-style: italic; }
+    #dreamImage { margin-top: 20px; max-width: 80%; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.2); }
+  </style>
+</head>
+<body>
+  <h1>Dream Visualizer 🌙</h1>
+  <p>Write 3 words from your dream:</p>
+  <input id="word1" placeholder="Word 1" />
+  <input id="word2" placeholder="Word 2" />
+  <input id="word3" placeholder="Word 3" />
+  <br />
+  <button onclick="generate()">Generate Story & Image</button>
+  <div id="image-story"></div>
+  <img id="dreamImage" alt="Generated dream" />
+
+  <!-- load your external script -->
+  <script src="script.js"></script>
+</body>
+</html>
