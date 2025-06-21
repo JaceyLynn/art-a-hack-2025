@@ -4,7 +4,7 @@ import fetch from 'node-fetch';
 import dotenv from 'dotenv';
 import fs from 'fs/promises';
 import path from 'path';
-
+import dotenv from 'dotenv';
 dotenv.config();
 
 const app = express();
@@ -20,7 +20,11 @@ await fs.mkdir(IMAGES_DIR, { recursive: true });
 app.use(express.static('public'));
 app.use('/images', express.static(IMAGES_DIR));
 
-const API_KEY = '';
+const API_KEY = process.env.OPENAI_API_KEY;
+if (!API_KEY) {
+  onsole.error('Missing OPENAI_API_KEY in .env');
+  process.exit(1);
+}
 
 // 3) A simple root route
 app.get('/', (req, res) => {
