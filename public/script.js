@@ -7,7 +7,7 @@ async function generate() {
   }
 
   try {
-    // 1) Generate the story
+    // Generate the story
     const storyRes = await fetch('/generate-story', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -24,6 +24,14 @@ async function generate() {
       throw new Error('No story generated.');
     }
     document.getElementById('image-story').innerText = story;
+
+    // Trigger download of the story as a .txt file
+    const storyFileName = `generated-story-${Date.now()}.txt`;
+    const blob = new Blob([story], { type: 'text/plain' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = storyFileName;
+    link.click();
 
     // Re-enable dynamic background color update based on moodColor
     const moodRes = await fetch('/analyze-mood', {

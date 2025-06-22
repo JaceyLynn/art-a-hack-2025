@@ -10,14 +10,12 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// ensure this exists:
+// ensure these exist:
 const IMAGES_DIR = path.join(process.cwd(), 'images');
 await fs.mkdir(IMAGES_DIR, { recursive: true });
 
-
-// 2) Serve front-end & saved images
-app.use(express.static('public'));
-app.use('/images', express.static(IMAGES_DIR));
+const STORY_DIR = path.join(process.cwd(), 'story');
+await fs.mkdir(STORY_DIR, { recursive: true });
 
 const API_KEY = process.env.OPENAI_API_KEY;
 if (!API_KEY) {
@@ -34,7 +32,7 @@ app.get('/', (req, res) => {
 app.post('/generate-story', async (req, res) => {
   const words = req.body.words || [];
   try {
-    const storyPrompt = `Write a dream-like first person story based on these components: ${words.join(', ')}. Keep it under 100 words.`;
+    const storyPrompt = `Write a first person surreal story based on these components: ${words.join(', ')}. Keep it under 100 words.`;
 
     const aiResp = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
@@ -185,6 +183,32 @@ app.post('/analyze-mood', async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
+
+// Endpoint to save the story to the 'story' folder
+app.post('/save-story', async (req, res) => {
+  console.log('Request body:', req.body);
+  const { fileName, content } = req.body;
+  if (!fileName || !content) {
+    return res.status(400).json({ error: 'Missing fileName or content in request body' });
+  }
+
+  console.log('Received request to save story:', { fileName, content });
+
+  try {
+    const filePath = path.join(STORY_DIR, fileName);
+    await fs.writeFile(filePath, content, 'utf8');
+    console.log('Story saved to:', filePath);
+
+    res.status(200).json({ message: 'Story saved successfully' });
+  } catch (err) {
+    console.error('❌ Error saving story:', err);
+    res.status(500).json({ error: 'Failed to save story' });
+  }
+});
+
+// Serve front-end & saved images
+app.use(express.static('public'));
+app.use('/images', express.static(IMAGES_DIR));
 
 
 app.listen(3000, () => {
