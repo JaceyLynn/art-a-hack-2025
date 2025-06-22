@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <title>Dream Collector</title>
+  <style>
+    /* --- Animations (Common) --- */
+    @keyframes gradientAnimation {
+      0% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+      100% { background-position: 0% 50%; }
+    }
+
+    @keyframes moveNoise {
+      0%, 100% { transform: translate(0, 0); }
+      10% { transform: translate(-5%, -10%); }
+      20% { transform: translate(-15%, 5%); }
+      30% { transform: translate(7%, -25%); }
+      40% { transform: translate(-5%, 25%); }
+      50% { transform: translate(-25%, 10%); }
+      60% { transform: translate(15%, 0%); }
+      70% { transform: translate(0%, 15%); }
+      80% { transform: translate(25%, -5%); }
+      90% { transform: translate(-10%, 10%); }
+    }
+
+    /* --- Base and Light Mode Styles --- */
+    body {
+      font-family: 'Courier New', Georgia, serif;
+      padding: 40px;
+      text-align: center;
+      color: #403E29;
+      position: relative;
+      background: #7A797F;
+      background-size: 600% 600%;
+      animation: gradientAnimation 18s ease infinite;
+      transition: color 0.5s ease;
+    }
+
+    body::before {
+      content: "";
+      position: fixed;
+      top: -50%; left: -50%;
+      width: 200%; height: 200%;
+      background-image: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 800"><filter id="noise"><feTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="3" stitchTiles="stitch"/></filter><rect width="100%" height="100%" filter="url(%23noise)"/></svg>');
+      opacity: 0.65;
+      pointer-events: none;
+      z-index: -1;
+      animation: moveNoise 1s steps(10, end) infinite;
+      transition: opacity 0.5s ease;
+    }
+
+    body > * {
+      position: relative;
+      z-index: 1;
+    }
+
+    input {
+      font-family: 'Courier New', Georgia, serif;
+      padding: 12px; margin: 8px; width: 200px;
+      border-radius: 4px;
+      border: 1px solid #73553C;
+      background-color: rgba(253, 246, 240, 0.6);
+      box-shadow: inset 1px 1px 2px rgba(0,0,0,0.1);
+      transition: all 0.3s ease;
+      cursor: text;
+      color: #403E29;
+    }
+
+    input::placeholder {
+      color: #888;
+    }
+
+    input:focus {
+      outline: none;
+      border-color: #403E29;
+    }
+
+    button {
+      font-family: 'Courier New', Georgia, serif;
+      padding: 12px 24px;
+      font-weight: bold;
+      border-radius: 4px;
+      background: #B3D979;
+      color: #403E29;
+      border: 1px solid #403E29;
+      cursor: pointer;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      transition: all 0.3s ease;
+      box-shadow: 3px 3px 0px #73553C;
+    }
+
+    button:active {
+      box-shadow: 1px 1px 0px #73553C;
+      transform: translate(2px, 2px);
+    }
+
+    #image-story {
+      margin-top: 30px;
+      font-style: italic;
+      font-size: 1.1em;
+      line-height: 1.6;
+      background: rgba(255,255,255,0.2);
+      padding: 20px;
+      border-radius: 8px;
+      transition: all 0.3s ease;
+    }
+
+    #image-container {
+      display: flex;
+      justify-content: center;
+      gap: 20px; margin-top: 40px; flex-wrap: wrap; min-height: 300px;
+    }
+
+    #image-container img {
+      width: 30%; min-width: 250px; max-width: 100%; height: auto;
+      border-radius: 4px;
+      border: 10px solid #fdf6f0;
+      border-bottom-width: 40px;
+      box-shadow: 5px 5px 15px rgba(0, 0, 0, 0.3);
+      filter: sepia(0.25) blur(0.5px) brightness(1.1) contrast(0.9);
+      transition: transform 0.4s ease, filter 0.4s ease, box-shadow 0.4s ease;
+    }
+
+    #image-container img:hover {
+      transform: scale(1.05) rotate(0deg);
+      z-index: 10;
+      filter: sepia(0) blur(0) brightness(1.15);
+      box-shadow: 10px 10px 25px rgba(0, 0, 0, 0.4);
+    }
+
+    @media (max-width: 800px) {
+      #image-container img {
+        width: 80%;
+        transform: rotate(0deg);
+      }
+    }
+  </style>
+</head>
+<body>
+  <h1>
+    <img src="asset/title.svg" alt="Dream Collector" style="width: 90%; max-width: 500px; filter: drop-shadow(2px 2px 2px rgba(0,0,0,0.1));" />
+  </h1>
+  <p>Write 3 words / short phrases from your dream:</p>
+  <input id="word1" placeholder="Word 1" />
+  <input id="word2" placeholder="Word 2" />
+  <input id="word3" placeholder="Word 3" />
+  <br />
+  <button onclick="generate()">create dream</button>
+  <div id="image-story"></div>
+  <div id="image-container">
+    <img id="dreamImage1" alt="Generated dream" />
+    <img id="dreamImage2" alt="Generated dream" />
+    <img id="dreamImage3" alt="Generated dream" />
+  </div>
+  <script src="script.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const particles = [];
+      const particleCount = 50;
+      let particleIndex = 0;
+
+      for (let i = 0; i < particleCount; i++) {
+        const particle = document.createElement('div');
+        particle.classList.add('glitter-particle');
+        particle.style.opacity = '0';
+        document.body.appendChild(particle);
+        particles.push(particle);
+      }
+
+      window.addEventListener('mousemove', (e) => {
+        const p = particles[particleIndex];
+        const size = Math.floor(Math.random() * 6 + 3);
+        const initialOpacity = Math.random() * 0.5 + 0.2;
+
+        p.style.transition = 'none';
+        p.style.width = `${size}px`;
+        p.style.height = `${size}px`;
+        p.style.opacity = initialOpacity;
+        p.style.transform = `translate(-50%, -50%)`;
+        p.style.left = e.clientX + 'px';
+        p.style.top = e.clientY + 'px';
+        p.offsetHeight;
+
+        p.style.transition = 'transform 1s cubic-bezier(0.17, 0.84, 0.44, 1), opacity 1s linear';
+        const finalX = (Math.random() - 0.5) * 50;
+        const finalY = (Math.random() - 0.5) * 50;
+        const finalScale = 0.1;
+
+        p.style.transform = `translate(calc(-50% + ${finalX}px), calc(-50% + ${finalY}px)) scale(${finalScale})`;
+        p.style.opacity = '0';
+
+        particleIndex = (particleIndex + 1) % particleCount;
+      });
+    });
+  </script>
+</body>
+</html>
