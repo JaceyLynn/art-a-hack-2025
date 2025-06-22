@@ -1,4 +1,7 @@
+console.log('Script loaded successfully');
+
 async function generate() {
+  console.log('Generate function triggered');
   const w1 = document.getElementById('word1').value.trim();
   const w2 = document.getElementById('word2').value.trim();
   const w3 = document.getElementById('word3').value.trim();
@@ -7,6 +10,8 @@ async function generate() {
   }
 
   try {
+    updateStatus('Generating story...');
+    console.log('Fetching story from server');
     // Generate the story
     const storyRes = await fetch('/generate-story', {
       method: 'POST',
@@ -20,6 +25,8 @@ async function generate() {
 
     const storyData = await storyRes.json();
     const story = storyData.story;
+    console.log('Received story data:', storyData);
+
     if (!story) {
       throw new Error('No story generated.');
     }
@@ -32,6 +39,7 @@ async function generate() {
     link.href = URL.createObjectURL(blob);
     link.download = storyFileName;
     link.click();
+    console.log('Story download triggered:', storyFileName);
 
     // Re-enable dynamic background color update based on moodColor
     const moodRes = await fetch('/analyze-mood', {
@@ -83,11 +91,11 @@ async function generate() {
 
     const imagesData = await imagesRes.json();
     const imageUrls = imagesData.imageUrls;
+    console.log('Generated image URLs:', imageUrls); // Log the generated image URLs
 
     // Render images
     const imageContainer = document.getElementById('image-container');
     imageContainer.innerHTML = '';
-    console.log('Generated image URLs:', imageUrls); // Log the generated image URLs
     imageUrls.forEach(url => {
       const img = document.createElement('img');
       img.src = url;
@@ -95,7 +103,10 @@ async function generate() {
       img.onerror = () => console.error(`Failed to load image: ${url}`); // Log image load failure
       imageContainer.appendChild(img);
     });
+
+    updateStatus('Generation complete!');
   } catch (error) {
+    updateStatus('Generation failed. Try again.');
     console.error('Error in generate():', error);
     alert(error.message);
   }

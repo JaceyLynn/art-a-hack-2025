@@ -3,6 +3,10 @@
 <head>
   <meta charset="UTF-8" />
   <title>Dream Collector</title>
+  <!-- Add preconnect links for Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Micro+5&display=swap" rel="stylesheet">
   <style>
     /* --- Animations (Common) --- */
     @keyframes gradientAnimation {
@@ -29,12 +33,13 @@
       font-family: 'Courier New', Georgia, serif;
       padding: 40px;
       text-align: center;
-      color: #403E29;
+      color: black;
       position: relative;
       background: #7A797F;
       background-size: 600% 600%;
-      animation: gradientAnimation 18s ease infinite;
+      animation: gradientAnimation 18s ease infinite; /* Restore original duration */
       transition: color 0.5s ease;
+      text-shadow: 0 0 5px white;
     }
 
     body::before {
@@ -55,45 +60,88 @@
       z-index: 1;
     }
 
+    /* Update input box font */
+    @import url('https://fonts.googleapis.com/css2?family=Micro+5&display=swap');
+
     input {
-      font-family: 'Courier New', Georgia, serif;
-      padding: 12px; margin: 8px; width: 200px;
+      font-family: 'Micro 5', sans-serif;
+      padding: 8px; margin: 8px; width: 200px;
       border-radius: 4px;
       border: 1px solid #73553C;
       background-color: rgba(253, 246, 240, 0.6);
       box-shadow: inset 1px 1px 2px rgba(0,0,0,0.1);
       transition: all 0.3s ease;
       cursor: text;
-      color: #403E29;
+      color: black;
+      text-shadow: 0 0 5px white;
+      /* Add white glow effect to input boxes */
+      box-shadow: 0 0 10px white;
+      /* Increase input font size */
+      font-size: 36px;
     }
 
     input::placeholder {
-      color: #888;
+      color: black;
+      text-shadow: 0 0 5px white;
     }
 
     input:focus {
       outline: none;
       border-color: #403E29;
+      /* Stronger white glow when focused */
+      box-shadow: 0 0 15px white;
     }
 
+    /* Updated button styles */
     button {
-      font-family: 'Courier New', Georgia, serif;
-      padding: 12px 24px;
-      font-weight: bold;
-      border-radius: 4px;
-      background: #B3D979;
-      color: #403E29;
-      border: 1px solid #403E29;
+      width: 70px;
+      height: 70px;
+      border-radius: 50%;
+      background: black; 
+      border: none;
       cursor: pointer;
-      text-transform: uppercase;
-      letter-spacing: 1.5px;
-      transition: all 0.3s ease;
-      box-shadow: 3px 3px 0px #73553C;
+      margin: 15px auto; /* Adjusted margin for new position */
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+      transition: all 0.2s ease;
+      position: relative;
+      flex-shrink: 0; /* Prevents button from shrinking */
+      color: black;
+      text-shadow: 0 0 5px white;
+    }
+
+    /* Triangle icon for the play button */
+    button::after {
+      content: '';
+      display: block;
+      width: 0;
+      height: 0;
+      border-style: solid;
+      border-width: 12px 0 12px 22px;
+      border-color: transparent transparent transparent white;
+      margin-left: 5px;
+    }
+
+    /* Reverse triangle color to black on hover */
+    button:hover::after {
+      border-color: transparent transparent transparent black;
+    }
+
+    button:hover {
+      background: white; /* Light green on hover */
+      transform: scale(1.05);
+      box-shadow: 0 6px 15px rgba(0,0,0,0.3);
     }
 
     button:active {
-      box-shadow: 1px 1px 0px #73553C;
-      transform: translate(2px, 2px);
+      transform: scale(0.95);
+      box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+    }
+
+    #hidden-button-text {
+      display: none;
     }
 
     #image-story {
@@ -142,12 +190,15 @@
   <h1>
     <img src="asset/title.svg" alt="Dream Collector" style="width: 90%; max-width: 500px; filter: drop-shadow(2px 2px 2px rgba(0,0,0,0.1));" />
   </h1>
-  <p>Write 3 words / short phrases from your dream:</p>
-  <input id="word1" placeholder="Word 1" />
-  <input id="word2" placeholder="Word 2" />
-  <input id="word3" placeholder="Word 3" />
+  <p><b>...Tell me about your dream...</b></p>
+  <input id="word1" placeholder="snippet I" />
+  <input id="word2" placeholder="snippet II" />
+  <input id="word3" placeholder="snippet III" />
   <br />
-  <button onclick="generate()">create dream</button>
+  <!-- Updated button element -->
+  <button onclick="generate()"></button>
+  <!-- Add status text under the generate button -->
+  <div id="status-text" style="font-family: 'Courier New', Georgia, serif; font-size: 16px; color: black; text-shadow: 0 0 5px white; margin-top: 10px;">Ready</div>
   <div id="image-story"></div>
   <div id="image-container">
     <img id="dreamImage1" alt="Generated dream" />
@@ -194,6 +245,143 @@
         particleIndex = (particleIndex + 1) % particleCount;
       });
     });
+
+    // Ensure placeholder image is set as the src for dream images
+    const placeholderPath = '/asset/placeholder-black-512x512.png';
+    document.getElementById('dreamImage1').src = placeholderPath;
+    document.getElementById('dreamImage2').src = placeholderPath;
+    document.getElementById('dreamImage3').src = placeholderPath;
+
+    function updateStatus(message) {
+      const statusText = document.getElementById('status-text');
+      statusText.textContent = message;
+    }
+
+    // Update the generate function to display the story
+    // Add a console log to confirm function execution
+    async function generate() {
+      console.log('Generate function triggered');
+      try {
+        const word1 = document.getElementById('word1').value.trim();
+        const word2 = document.getElementById('word2').value.trim();
+        const word3 = document.getElementById('word3').value.trim();
+
+        if (!word1 || !word2 || !word3) {
+          throw new Error('Please fill in all three input boxes.');
+        }
+
+        updateStatus('Generating story...');
+        console.log('Fetching story from server');
+        const storyResponse = await fetch('/generate-story', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ words: [word1, word2, word3] })
+        });
+        const storyData = await storyResponse.json();
+        console.log('Received story data:', storyData);
+
+        if (!storyData.story) {
+          throw new Error('Story generation failed');
+        }
+
+        document.getElementById('image-story').textContent = storyData.story;
+
+        // Trigger download of the story as a .txt file
+        const storyFileName = `generated-story-${Date.now()}.txt`;
+        const blob = new Blob([storyData.story], { type: 'text/plain' });
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = storyFileName;
+        link.click();
+        console.log('Story download triggered:', storyFileName);
+
+        updateStatus('Determining mood...');
+        console.log('Fetching mood from server');
+        const moodResponse = await fetch('/analyze-mood', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ story: storyData.story })
+        });
+        const moodData = await moodResponse.json();
+        console.log('Received mood data:', moodData);
+
+        if (!moodData.color) {
+          throw new Error('Mood determination failed');
+        }
+
+        moodColor = moodData.color;
+        console.log('Updated mood color:', moodColor);
+        updateBackgroundColorGradually(moodColor);
+
+        updateStatus('Generating images...');
+        console.log('Fetching images from server');
+        const imageResponse = await fetch('/generate-images', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ prompt: storyData.story, n: 3 })
+        });
+        const imageData = await imageResponse.json();
+        console.log('Received image data:', imageData);
+
+        if (!imageData.imageUrls || imageData.imageUrls.length === 0) {
+          throw new Error('Image generation failed');
+        }
+
+        document.getElementById('dreamImage1').src = imageData.imageUrls[0];
+        document.getElementById('dreamImage2').src = imageData.imageUrls[1];
+        document.getElementById('dreamImage3').src = imageData.imageUrls[2];
+
+        updateStatus('Generation complete!');
+      } catch (error) {
+        updateStatus('Generation failed. Try again.');
+        console.error('Error in generate function:', error);
+      }
+    }
+
+    // Add a moodColor variable and a function to update the background dynamically
+    let moodColor = '#7A797F'; // Default mood color
+    console.log('Mood color initialized:', moodColor);
+
+    function updateBackgroundColor() {
+      console.log('Updating background color to:', moodColor);
+      document.body.style.background = moodColor;
+    }
+
+    function updateBackgroundColorGradually(newColor) {
+      const transitionSteps = 30; // Number of steps for gradual transition
+      const transitionInterval = 100; // Interval in milliseconds (3 seconds total)
+
+      const hexToRgb = (hex) => {
+        const bigint = parseInt(hex.slice(1), 16);
+        return [(bigint >> 16) & 255, (bigint >> 8) & 255, bigint & 255];
+      };
+
+      const rgbToHex = (rgb) => {
+        return `#${rgb.map((val) => val.toString(16).padStart(2, '0')).join('')}`;
+      };
+
+      const interpolateColor = (color1, color2, factor) => {
+        const rgb1 = hexToRgb(color1);
+        const rgb2 = hexToRgb(color2);
+        const interpolatedRgb = rgb1.map((val, i) => Math.round(val + factor * (rgb2[i] - val)));
+        return rgbToHex(interpolatedRgb);
+      };
+
+      let step = 0;
+      const previousColor = document.body.style.background || '#7A797F';
+
+      const interval = setInterval(() => {
+        const intermediateColor = interpolateColor(previousColor, newColor, step / transitionSteps);
+        document.body.style.background = intermediateColor;
+        step++;
+
+        if (step > transitionSteps) {
+          clearInterval(interval);
+        }
+      }, transitionInterval);
+    }
+
+    console.log('Background color update logic adjusted to depend on story mood');
   </script>
 </body>
 </html>

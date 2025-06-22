@@ -30,9 +30,10 @@ app.get('/', (req, res) => {
 
 // 🌙 Generate story
 app.post('/generate-story', async (req, res) => {
+  console.log('Received request for story generation:', req.body);
   const words = req.body.words || [];
   try {
-    const storyPrompt = `Write a first person surreal story based on these components: ${words.join(', ')}. Keep it under 100 words.`;
+    const storyPrompt = `Write a first person surreal story using these key components: ${words.join(', ')}. Keep it under 100 words.`;
 
     const aiResp = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
@@ -47,10 +48,11 @@ app.post('/generate-story', async (req, res) => {
     });
     const aiData = await aiResp.json();
     const story = aiData.choices?.[0]?.message?.content;
+    console.log('Generated story:', story);
     if (story) return res.json({ story });
     res.status(500).json({ error: 'No story generated.' });
   } catch (e) {
-    console.error(e);
+    console.error('Error generating story:', e);
     res.status(500).json({ error: 'OpenAI error.' });
   }
 });
@@ -104,11 +106,20 @@ app.post('/generate-image-prompt', async (req, res) => {
 });
 
 // POST /generate-images → generate n images, save each to disk, return their public URLs
+// Add placeholder black square before images are generated
 app.post('/generate-images', async (req, res) => {
+    console.log('Received request for image generation:', req.body);
     const { prompt, n = 3 } = req.body;
-  
+
     try {
-      // 1) Ask OpenAI for n images
+      // Update placeholder URL to point to the correct path
+      const placeholderPath = `${req.protocol}://${req.get('host')}/public/asset/placeholder-black-512x512.png`;
+      const placeholderUrls = Array(n).fill(placeholderPath);
+
+      // Send placeholder URLs immediately
+      res.json({ imageUrls: placeholderUrls });
+
+      // Generate actual images asynchronously
       const aiResp = await fetch('https://api.openai.com/v1/images/generations', {
         method: 'POST',
         headers: {
@@ -119,31 +130,49 @@ app.post('/generate-images', async (req, res) => {
       });
       const aiData = await aiResp.json();
       if (!aiData.data || !Array.isArray(aiData.data)) {
-        return res.status(500).json({ error: 'No images returned from OpenAI' });
+        console.error('No images returned from OpenAI');
+        return;
       }
-  
-      // 2) Download & save each image
-      const publicUrls = await Promise.all(aiData.data.map(async (item) => {
+
+      // Replace placeholder images with actual images
+      const publicUrls = await Promise.all(aiData.data.map(async (item, index) => {
         const imageUrl = item.url;
         const imgResp = await fetch(imageUrl);
         const buffer = await imgResp.buffer();
-  
+
         const filename = `ai-image-${Date.now()}-${Math.random().toString(36).slice(2)}.png`;
         const filepath = path.join(IMAGES_DIR, filename);
         await fs.writeFile(filepath, buffer);
-  
+
         return `${req.protocol}://${req.get('host')}/images/${filename}`;
       }));
-  
-      // 3) Send back the array of URLs
-      res.json({ imageUrls: publicUrls });
-  
+
+      console.log('Generated image URLs:', publicUrls);
     } catch (err) {
       console.error('❌ /generate-images error', err);
-      res.status(500).json({ error: err.message });
     }
-  });
+});
   
+
+// Gradual color transition logic
+function interpolateColor(color1, color2, factor) {
+  const hexToRgb = (hex) => {
+    const bigint = parseInt(hex.slice(1), 16);
+    return [(bigint >> 16) & 255, (bigint >> 8) & 255, bigint & 255];
+  };
+
+  const rgbToHex = (rgb) => {
+    return `#${rgb.map((val) => val.toString(16).padStart(2, '0')).join('')}`;
+  };
+
+  const rgb1 = hexToRgb(color1);
+  const rgb2 = hexToRgb(color2);
+
+  const interpolatedRgb = rgb1.map((val, i) => Math.round(val + factor * (rgb2[i] - val)));
+  return rgbToHex(interpolatedRgb);
+}
+
+let previousColor = '#FFFFFF'; // Default to white
 
 // 🌈 Analyze mood and return a color
 app.post('/analyze-mood', async (req, res) => {
@@ -162,7 +191,7 @@ app.post('/analyze-mood', async (req, res) => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4', // Updated to use gpt-4
+        model: 'gpt-4',
         messages: [{ role: 'user', content: moodPrompt }],
         temperature: 0.7,
         max_tokens: 10
@@ -171,13 +200,25 @@ app.post('/analyze-mood', async (req, res) => {
 
     const aiData = await aiResp.json();
     const moodColor = aiData.choices?.[0]?.message?.content?.trim();
-    console.log('Generated mood color:', moodColor); // Log the generated mood color
 
     if (!moodColor || !/^#[0-9A-Fa-f]{6}$/.test(moodColor)) {
       return res.status(500).json({ error: 'Failed to generate mood color' });
     }
 
-    res.json({ color: moodColor });
+    // Gradual transition logic
+    const transitionSteps = 10;
+    const transitionInterval = 100; // milliseconds
+
+    for (let i = 0; i <= transitionSteps; i++) {
+      setTimeout(() => {
+        const intermediateColor = interpolateColor(previousColor, moodColor, i / transitionSteps);
+        console.log(`Transition step ${i}: ${intermediateColor}`);
+        if (i === transitionSteps) {
+          previousColor = moodColor; // Update previous color after transition
+          res.json({ color: moodColor });
+        }
+      }, i * transitionInterval);
+    }
   } catch (err) {
     console.error('❌ /analyze-mood error:', err);
     res.status(500).json({ error: err.message });
@@ -210,7 +251,10 @@ app.post('/save-story', async (req, res) => {
 app.use(express.static('public'));
 app.use('/images', express.static(IMAGES_DIR));
 
+// Serve the asset folder explicitly
+app.use('/asset', express.static(path.join(process.cwd(), 'public/asset')));
 
-app.listen(3000, () => {
-  console.log('✅ Server running at http://localhost:3000');
+const PORT = 3000;
+app.listen(PORT, () => {
+  console.log('✅ Server running at http://localhost:' + PORT);
 });
